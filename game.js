@@ -13,12 +13,16 @@ class Game {
         this.stats = {
             money: 0,
             energy: 100,
-            time: 9 * 60 // 9:00 AM in minutes
+            time: 9 * 60, // 9:00 AM in minutes
+            hadCoffee: false
         };
         
         this.keys = {};
         this.mouse = { x: 0, y: 0, clicked: false };
-        
+
+        this.moveFrameCounter = 0;
+        this.stillFrameCounter = 0;
+
         this.init();
     }
     
@@ -32,6 +36,13 @@ class Game {
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
+            // E key triggers interaction like left click
+            if (e.key.toLowerCase() === 'e' && !this.mouse.clicked) {
+                this.mouse.clicked = true;
+                setTimeout(() => {
+                    this.mouse.clicked = false;
+                }, 100);
+            }
         });
         
         document.addEventListener('keyup', (e) => {
@@ -88,7 +99,8 @@ class Game {
         this.stats = {
             money: 0,
             energy: 100,
-            time: 9 * 60 // 9:00 AM
+            time: 9 * 60, // 9:00 AM
+            hadCoffee: false
         };
     }
     
@@ -171,9 +183,9 @@ class Game {
             { x: 500, y: 100, width: 120, height: 80, type: 'desk', color: '#795548' },
             
             // Computer terminals
-            { x: 150, y: 120, width: 20, height: 15, type: 'computer', color: '#2196f3' },
-            { x: 350, y: 120, width: 20, height: 15, type: 'computer', color: '#2196f3' },
-            { x: 550, y: 120, width: 20, height: 15, type: 'computer', color: '#2196f3' },
+            { x: 140, y: 110, width: 40, height: 30, type: 'computer', color: '#2196f3' },
+            { x: 340, y: 110, width: 40, height: 30, type: 'computer', color: '#2196f3' },
+            { x: 540, y: 110, width: 40, height: 30, type: 'computer', color: '#2196f3' },
             
             // Printer
             { x: 650, y: 200, width: 60, height: 60, type: 'printer', color: '#9e9e9e' },
@@ -182,11 +194,18 @@ class Game {
             { x: 100, y: 300, width: 60, height: 80, type: 'coffee', color: '#6d4c41' },
             
             // Meeting table
-            { x: 300, y: 350, width: 200, height: 120, type: 'meeting', color: '#5d4037' },
+            { x: 300, y: 350, width: 200, height: 120, type: 'meeting', color: '#98FF98' },
             
             // Filing cabinet
-            { x: 600, y: 400, width: 80, height: 100, type: 'filing', color: '#757575' }
+            { x: 600, y: 400, width: 80, height: 100, type: 'filing', color: '#757575' },
+
+            // Breakroom
+            { x: 20, y: 450, width: 100, height: 80, type: 'breakroom', subtype: 'break room', color: '#FFD699' }
         );
+
+        // Breakroom tracking
+        this.breakroomTime = 0;
+        this.breakroomUsed = false;
         
         // Add documents
         this.addDocument('report', 200, 200);
@@ -258,8 +277,8 @@ class Game {
     addDocument(type, x, y) {
         this.gameObjects.push({
             x, y,
-            width: 25,
-            height: 30,
+            width: 50,
+            height: 60,
             type: 'document',
             subtype: type,
             color: '#f5f5f5'
@@ -347,16 +366,43 @@ class Game {
     
     updatePlayer() {
         let dx = 0, dy = 0;
-        
-        if (this.keys['w'] || this.keys['arrowup']) dy = -this.player.speed;
-        if (this.keys['s'] || this.keys['arrowdown']) dy = this.player.speed;
-        if (this.keys['a'] || this.keys['arrowleft']) dx = -this.player.speed;
-        if (this.keys['d'] || this.keys['arrowright']) dx = this.player.speed;
-        
-        // Check boundaries
-        this.player.x = Math.max(this.player.size/2, Math.min(this.width - this.player.size/2, this.player.x + dx));
-        this.player.y = Math.max(this.player.size/2, Math.min(this.height - this.player.size/2, this.player.y + dy));
-        
+
+        // Only allow movement if energy > 0
+        if (this.stats.energy > 0) {
+            if (this.keys['w'] || this.keys['arrowup']) dy = -this.player.speed;
+            if (this.keys['s'] || this.keys['arrowdown']) dy = this.player.speed;
+            if (this.keys['a'] || this.keys['arrowleft']) dx = -this.player.speed;
+            if (this.keys['d'] || this.keys['arrowright']) dx = this.player.speed;
+
+            // Check boundaries
+            this.player.x = Math.max(this.player.size/2, Math.min(this.width - this.player.size/2, this.player.x + dx));
+            this.player.y = Math.max(this.player.size/2, Math.min(this.height - this.player.size/2, this.player.y + dy));
+        }
+
+        // Energy drain/recovery based on movement
+        if (dx !== 0 || dy !== 0) {
+            // Moving - drain energy
+            this.stillFrameCounter = 0;
+            this.moveFrameCounter++;
+            if (this.moveFrameCounter >= 60) { // ~1 second at 60fps
+                this.stats.energy = Math.max(0, this.stats.energy - 1);
+                this.moveFrameCounter = 0;
+            }
+        } else {
+            // Standing still - recover energy
+            this.moveFrameCounter = 0;
+            this.stillFrameCounter++;
+            if (this.stillFrameCounter >= 300) { // ~5 seconds at 60fps
+                this.stats.energy = Math.min(100, this.stats.energy + 1);
+                this.stillFrameCounter = 0;
+            }
+        }
+
+        // Ensure energy never goes below 0
+        if (this.stats.energy < 0) {
+            this.stats.energy = 0;
+        }
+
         // Check interactions
         if (this.mouse.clicked) {
             this.checkInteractions();
@@ -441,12 +487,18 @@ class Game {
                 }
                 break;
             case 'meeting':
-                this.updateTaskProgress(3, 1);
-                this.stats.money += 15;
-                this.stats.energy -= 10;
+                const meetingTask = this.tasks.find(t => t.id === 3);
+                if (!meetingTask || !meetingTask.completed) {
+                    this.updateTaskProgress(3, 1);
+                    this.stats.money += 15;
+                    this.stats.energy -= 60;
+                }
                 break;
             case 'coffee':
-                this.stats.energy = Math.min(100, this.stats.energy + 20);
+                if (!this.stats.hadCoffee) {
+                    this.stats.energy = Math.min(100, this.stats.energy + 20);
+                    this.stats.hadCoffee = true;
+                }
                 break;
         }
     }
@@ -490,11 +542,65 @@ class Game {
     }
     
     updateOfficeJob() {
-        // Randomly spawn new documents
-        if (Math.random() < 0.003) {
+        // Randomly spawn new documents (max 5)
+        const documentCount = this.gameObjects.filter(o => o.type === 'document').length;
+        if (documentCount < 5 && Math.random() < 0.001) {
             const types = ['report', 'email', 'spreadsheet'];
             const type = types[Math.floor(Math.random() * types.length)];
             this.addDocument(type, 150 + Math.random() * 400, 180 + Math.random() * 100);
+        }
+
+        // Update meeting table color based on task completion
+        const meetingTask = this.tasks.find(t => t.id === 3);
+        const meetingTable = this.gameObjects.find(o => o.type === 'meeting');
+        if (meetingTable) {
+            meetingTable.color = meetingTask && meetingTask.completed ? '#5d4037' : '#98FF98';
+        }
+
+        // Breakroom logic
+        const breakroom = this.gameObjects.find(o => o.type === 'breakroom');
+        if (breakroom && !this.breakroomUsed) {
+            // Check if player is inside breakroom
+            const inBreakroom = this.player.x >= breakroom.x &&
+                               this.player.x <= breakroom.x + breakroom.width &&
+                               this.player.y >= breakroom.y &&
+                               this.player.y <= breakroom.y + breakroom.height;
+
+            // Check if player is standing still
+            const isMoving = this.keys['w'] || this.keys['arrowup'] ||
+                            this.keys['s'] || this.keys['arrowdown'] ||
+                            this.keys['a'] || this.keys['arrowleft'] ||
+                            this.keys['d'] || this.keys['arrowright'];
+
+            if (inBreakroom && !isMoving) {
+                this.breakroomTime++;
+                // Every 60 frames (~1 second), gain 1 energy
+                if (this.breakroomTime % 60 === 0) {
+                    this.stats.energy = Math.min(100, this.stats.energy + 1);
+                }
+                // After 1200 frames (~20 seconds), kick player out
+                if (this.breakroomTime >= 1200) {
+                    this.breakroomUsed = true;
+                    breakroom.color = '#FF6666'; // Red
+                    // Teleport player outside breakroom
+                    this.player.x = breakroom.x + breakroom.width + this.player.size;
+                    this.player.y = breakroom.y + breakroom.height / 2;
+                }
+            } else if (!inBreakroom) {
+                this.breakroomTime = 0; // Reset timer if player leaves
+            }
+        }
+
+        // Block entry if breakroom is used
+        if (breakroom && this.breakroomUsed) {
+            const wouldEnter = this.player.x >= breakroom.x - this.player.size/2 &&
+                              this.player.x <= breakroom.x + breakroom.width + this.player.size/2 &&
+                              this.player.y >= breakroom.y - this.player.size/2 &&
+                              this.player.y <= breakroom.y + breakroom.height + this.player.size/2;
+            if (wouldEnter) {
+                // Push player out
+                this.player.x = Math.max(this.player.x, breakroom.x + breakroom.width + this.player.size/2);
+            }
         }
     }
     
@@ -548,10 +654,10 @@ class Game {
             this.ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
             
             // Draw object type labels
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#000000';
             this.ctx.font = '10px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(obj.type, obj.x + obj.width/2, obj.y + obj.height/2);
+            this.ctx.fillText(obj.subtype || obj.type, obj.x + obj.width/2, obj.y + obj.height/2);
         }
         
         // Draw player

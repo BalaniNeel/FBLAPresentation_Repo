@@ -384,7 +384,7 @@ class Game {
             // Moving - drain energy
             this.stillFrameCounter = 0;
             this.moveFrameCounter++;
-            if (this.moveFrameCounter >= 60) { // ~1 second at 60fps
+            if (this.moveFrameCounter >= 30) { // ~0.5 second at 60fps
                 this.stats.energy = Math.max(0, this.stats.energy - 1);
                 this.moveFrameCounter = 0;
             }
@@ -586,9 +586,8 @@ class Game {
                     this.player.x = breakroom.x + breakroom.width + this.player.size;
                     this.player.y = breakroom.y + breakroom.height / 2;
                 }
-            } else if (!inBreakroom) {
-                this.breakroomTime = 0; // Reset timer if player leaves
             }
+            // Timer persists - don't reset when leaving
         }
 
         // Block entry if breakroom is used

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Simulator 2D</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="ui-overlay">
+            <div class="job-selector" id="jobSelector">
+                <h2>Choose Your Job</h2>
+                <div class="job-buttons">
+                    <button class="job-btn" data-job="chef">👨‍🍳 Chef</button>
+                    <button class="job-btn" data-job="office">👨‍💼 Office Worker</button>
+                    <button class="job-btn" data-job="farmer">👨‍🌾 Farmer</button>
+                </div>
+            </div>
+            
+            <div class="game-ui" id="gameUI" style="display: none;">
+                <div class="stats">
+                    <div class="stat">
+                        <span class="stat-label">Money:</span>
+                        <span class="stat-value" id="money">$0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Energy:</span>
+                        <span class="stat-value" id="energy">100%</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Time:</span>
+                        <span class="stat-value" id="time">9:00 AM</span>
+                    </div>
+                </div>
+                
+                <div class="job-info">
+                    <h3 id="jobTitle">Job Title</h3>
+                    <div class="task-list" id="taskList"></div>
+                </div>
+                
+                <button class="back-btn" id="backBtn">← Back to Jobs</button>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
